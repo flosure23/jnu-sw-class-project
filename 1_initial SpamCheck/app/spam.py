@@ -5,6 +5,7 @@ def check_spam(text: str):
     if text == "":
         return "ham", 0
 
+    # 키워드 목록 관리
     spam_keywords = [
     "free", "win", "winner", "prize", "click",
     "buy now", "urgent", "cash", "money", "offer", "deal",
