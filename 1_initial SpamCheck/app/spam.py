@@ -1,4 +1,5 @@
 def check_spam(text: str):
+    # 전처리: 소문자화 및 공백 제거
     text = text.lower().strip()
 
     if text == "":
