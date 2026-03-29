@@ -17,6 +17,12 @@
     <script>
         function classify() {
             const text = document.getElementById("text").value;
+            const result = document.getElementById("result");
+
+            if (!text) {
+                result.innerText = "메시지를 입력해 주세요!";
+                return;
+            }
 
             fetch("/classify", {
                 method: "POST",
@@ -25,13 +31,9 @@
                 },
                 body: JSON.stringify({ text })
             })
-                .then(res => res.json())
+                .then(response => response.json())
                 .then(data => {
-                    document.getElementById("result").innerText =
-                        "결과: " + data.label + " (score=" + data.score + ")";
-                })
-                .catch(() => {
-                    document.getElementById("result").innerText = "에러 발생";
+                    result.innerText = `결과: ${data.label} (score=${data.score})`;
                 });
         }
     </script>
