@@ -1,0 +1,23 @@
+artifact_path: file:///C:/Users/190336/Documents/Antigravity/05_HW/01_AISW/01_git_version_manager/mlruns/1/models/m-e16d42ecf2384d859c3b420bfe761930/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.11.15
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.8.0
+    skops_trusted_types: null
+mlflow_version: 3.12.0
+model_id: m-e16d42ecf2384d859c3b420bfe761930
+model_size_bytes: 1738
+model_uuid: m-e16d42ecf2384d859c3b420bfe761930
+prompts: null
+run_id: d4f731e01e1b473381099fe4e9940dbd
+utc_time_created: '2026-05-17 09:42:45.137018'

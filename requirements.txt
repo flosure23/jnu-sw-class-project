@@ -6,3 +6,7 @@ pytest==9.0.2
 httpx==0.28.1
 hypothesis
 requests==2.32.5
+pandas
+scikit-learn
+joblib
+mlflow
