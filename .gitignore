@@ -6,3 +6,7 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+.hypothesis/
+.pytest_cache/
+mlflow.db
+mlruns/
