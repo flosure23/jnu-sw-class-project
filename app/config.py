@@ -1,10 +1,9 @@
-# app/config.py
 import os
 
-MODEL_MODE = "ml"
 
-LOCAL_MODEL_PATH = "ml/artifacts/spam_model.joblib"
+MODEL_MODE = os.getenv("MODEL_MODE", "rules")
 
-MLFLOW_TRACKING_URI = "sqlite:///mlflow.db"
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "")
+MODEL_URI = os.getenv("MODEL_URI", "models:/spam-model@champion")
 
-MODEL_URI = os.getenv("MODEL_URI", None)
+LOCAL_MODEL_PATH = os.path.join("ml", "artifacts", "spam_model.joblib")

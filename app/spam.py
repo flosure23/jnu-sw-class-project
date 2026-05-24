@@ -1,49 +1,63 @@
-# app/spam.py
+from app.config import MODEL_MODE
 from app.model_loader import load_model
 
 
+SPAM_WORDS = [
+    "free",
+    "prize",
+    "winner",
+    "win",
+    "cash",
+    "urgent",
+    "click",
+    "offer",
+    "claim",
+    "money",
+    "reward",
+    "verify",
+    "payment",
+    "account"
+]
+
+
 def check_spam_rules(text: str):
-    text = text.lower().strip()
+    clean_text = text.strip()
 
-    if text == "":
-        return "ham", 0
+    if not clean_text:
+        return "ham", 0.0
 
-    spam_keywords = [
-        "free", "win", "winner", "prize", "click",
-        "buy now", "urgent", "cash", "money", "offer", "deal",
-        "bonus", "limited", "guarantee", "congratulations"
-    ]
+    lowered = clean_text.lower()
+    hit_count = sum(1 for word in SPAM_WORDS if word in lowered)
 
-    hit = 0
-    for kw in spam_keywords:
-        if kw in text:
-            hit += 1
+    if hit_count > 0:
+        score = min(0.5 + hit_count * 0.1, 0.99)
+        return "spam", score
 
-    label = "spam" if hit > 0 else "ham"
-    return label, hit
+    return "ham", 0.5
 
 
 def check_spam_ml(text: str):
-    text = text.strip()
+    clean_text = text.strip()
 
-    if text == "":
+    if not clean_text:
         return "ham", 0.0
 
     model = load_model()
+    label = model.predict([clean_text])[0]
 
-    pred = model.predict([text])[0]
-
+    score = 0.0
     if hasattr(model, "predict_proba"):
-        proba = model.predict_proba([text])[0]
+        probabilities = model.predict_proba([clean_text])[0]
         classes = list(model.classes_)
-        pred_index = classes.index(pred)
-        score = float(proba[pred_index])
-    else:
-        score = 1.0
 
-    return pred, score
+        if label in classes:
+            score = float(probabilities[classes.index(label)])
+
+    return label, score
 
 
-# 기존 테스트와 API 호환을 위해 check_spam 이름 유지
-def check_spam(text: str):
-    return check_spam_ml(text)
+def classify_text(text: str):
+    if MODEL_MODE == "mlflow":
+        return check_spam_ml(text)
+
+    return check_spam_rules(text)

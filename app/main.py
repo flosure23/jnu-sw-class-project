@@ -1,77 +1,37 @@
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from app.config import MODEL_MODE
-from app.spam import check_spam_rules, check_spam_ml
-from app.issue import create_github_issue
 from pydantic import BaseModel
-import logging
-import traceback
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(filename)s:%(lineno)d (%(funcName)s) | %(message)s"
-)
-
-logger = logging.getLogger("spamcheck")
-
-app = FastAPI(title="SpamCheck Web")
-
-app.mount("/static", StaticFiles(directory="static"), name="static")
+from app.spam import classify_text
+from app.model_loader import get_model_info
 
 
-@app.get("/", response_class=HTMLResponse)
-def home():
-    with open("static/index.html", encoding="utf-8") as f:
-        return f.read()
+app = FastAPI(title="AI Spam Checker")
 
 
-class ClassifyRequest(BaseModel):
+class SpamRequest(BaseModel):
     text: str
 
 
 @app.post("/classify")
-async def classify(payload: ClassifyRequest):
-    text = payload.text
-
-    logger.info(f"CALL /classify | text='{text}' | len={len(text)}")
-
+def classify(request: SpamRequest):
     try:
-        if MODEL_MODE == "ml":
-            label, score = check_spam_ml(text)
-        else:
-            label, score = check_spam_rules(text)
-
-        logger.info(f"OK /classify | label={label} score={score}")
+        label, score = classify_text(request.text)
 
         return {
             "label": label,
-            "score": score
+            "score": score,
+            "model_info": get_model_info(),
+            "error": None
         }
 
     except Exception as e:
-        logger.exception(
-            f"FAIL /classify | text='{text}' | error={type(e).__name__}: {e}"
-        )
-
-        tb = traceback.format_exc()
-
-        title = f"[Prod Error] /classify failed: {type(e).__name__}"
-        body = (
-            "## Summary\n"
-            f"- endpoint: `/classify`\n"
-            f"- input(text, short): `{text}`\n"
-            f"- input length: `{len(text)}`\n\n"
-            "## Exception\n"
-            f"- type: `{type(e).__name__}`\n"
-            f"- message: `{str(e)}`\n\n"
-            "## Traceback (line info)\n"
-            f"```text\n{tb}\n```"
-        )
-
-        create_github_issue(title, body, logger)
-
         return {
-            "label": "Internal Server Error",
-            "score": -1
+            "label": "error",
+            "score": -1,
+            "model_info": get_model_info(),
+            "error": str(e)
         }
+
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")

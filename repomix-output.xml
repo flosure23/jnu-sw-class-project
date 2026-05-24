@@ -1,0 +1,854 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.dockerignore
+.github/workflows/docker-verify.yml
+.github/workflows/issue_commenter.yml
+.github/workflows/pr_push_tester.yml
+.github/workflows/train.yml
+.gitignore
+aisw_test06/.coverage
+aisw_test06/number_utils.py
+aisw_test06/order_service.py
+aisw_test06/test_number_hypothesis.py
+aisw_test06/test_order_mock.py
+aisw_test06/test_order_stub.py
+aisw_test06/test_text_tools.py
+aisw_test06/text_tools.py
+app/config.py
+app/issue.py
+app/main.py
+app/model_loader.py
+app/spam.py
+Dockerfile
+ml/artifacts/spam_model.joblib
+ml/data/spam.csv
+ml/train.py
+requirements.txt
+static/index.html
+tests/conftest.py
+tests/test_api.py
+tests/test_model.py
+tests/test_spam.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".dockerignore">
+__pycache__/
+.pytest_cache/
+.venv/
+venv/
+.git/
+.github/
+.env
+*.pyc
+</file>
+
+<file path=".github/workflows/docker-verify.yml">
+name: Docker Verify
+
+on:
+  pull_request:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  docker-verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t spamcheck:ci .
+
+      - name: Run container
+        run: |
+          docker run -d --name spamcheck_ci \
+            -e PORT=10000 \
+            -p 10000:10000 \
+            spamcheck:ci
+
+      - name: Check container is running
+        run: |
+          sleep 3
+          docker ps | grep spamcheck_ci
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f spamcheck_ci || true
+</file>
+
+<file path=".github/workflows/issue_commenter.yml">
+name: Auto Comment on Issue
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Comment on new issue
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.MY_PERSONAL_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.payload.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "감사합니다. 이슈 확인 후 처리해드릴게요. 😊"
+            })
+</file>
+
+<file path=".github/workflows/train.yml">
+name: Train ML Model
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ml/**'
+      - 'app/**'
+      - 'tests/**'
+      - 'requirements.txt'
+      - '.github/workflows/train.yml'
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          MODEL_MODE=rules pytest -q
+
+      - name: Train model
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: |
+          python -m ml.train
+
+      - name: Upload trained model artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-model-files
+          path: ml/artifacts/
+</file>
+
+<file path="aisw_test06/number_utils.py">
+# number_utils.py
+
+def safe_average(a, b):
+    return (a + b) / 2
+</file>
+
+<file path="aisw_test06/order_service.py">
+# order_service.py
+
+class OrderService:
+    def __init__(self, notifier):
+        self.notifier = notifier
+
+    def place_order(self, user, item, price):
+        message = f"{user} ordered {item} ({price})"
+        self.notifier.send(message)
+        return "ORDER_OK"
+</file>
+
+<file path="aisw_test06/test_number_hypothesis.py">
+import unittest
+from hypothesis import given, strategies as st
+from number_utils import safe_average
+
+class TestSafeAverage(unittest.TestCase):
+    @given(
+        st.integers(min_value=-1000000, max_value=1000000),
+        st.integers(min_value=-1000000, max_value=1000000)
+    )
+    def test_average_between_two_values(self, a, b):
+        result = safe_average(a, b)
+        self.assertTrue(min(a, b) <= result <= max(a, b))
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+</file>
+
+<file path="aisw_test06/test_order_mock.py">
+# test_order_mock.py
+
+import unittest
+from unittest.mock import Mock
+from order_service import OrderService
+
+class TestOrderServiceWithMock(unittest.TestCase):
+    def setUp(self):
+        self.mock_notifier = Mock()
+        self.service = OrderService(self.mock_notifier)
+
+    def test_place_order_calls_notifier(self):
+        result = self.service.place_order("lee", "mouse", 15000)
+
+        self.assertEqual(result, "ORDER_OK")
+        self.mock_notifier.send.assert_called_with("lee ordered mouse (15000)")
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+</file>
+
+<file path="aisw_test06/test_order_stub.py">
+# test_order_stub.py
+
+import unittest
+from order_service import OrderService
+
+class StubNotifier:
+    def send(self, message):
+        return "sent"
+
+class TestOrderServiceWithStub(unittest.TestCase):
+    def setUp(self):
+        self.notifier = StubNotifier()
+        self.service = OrderService(self.notifier)
+
+    def test_place_order_returns_ok(self):
+        result = self.service.place_order("kim", "keyboard", 30000)
+        self.assertEqual(result, "ORDER_OK")
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+</file>
+
+<file path="aisw_test06/test_text_tools.py">
+# test_text_tools.py
+
+import unittest
+from text_tools import TextTools
+
+class TestTextTools(unittest.TestCase):
+    def setUp(self):
+        self.tool = TextTools()
+
+    def test_count_words_basic(self):
+        result = self.tool.count_words("python unit test practice")
+        self.assertEqual(result, 4)
+
+    def test_count_words_empty(self):
+        result = self.tool.count_words("")
+        self.assertEqual(result, 0)
+
+    def test_contains_word_true(self):
+        result = self.tool.contains_word("python unittest coverage", "unittest")
+        self.assertTrue(result)
+
+    def test_contains_word_false(self):
+        result = self.tool.contains_word("python unittest coverage", "mock")
+        self.assertFalse(result)
+
+    def test_make_upper(self):
+        result = self.tool.make_upper("hello")
+        self.assertEqual(result, "HELLO")
+    
+    def test_count_words_basic(self):
+        result = self.tool.count_words("python unit test practice")
+        self.assertEqual(result, 4)
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
+</file>
+
+<file path="aisw_test06/text_tools.py">
+# text_tools.py
+
+class TextTools:
+    def count_words(self, text):
+        if text.strip() == "":
+            return 0
+        return len(text.split())
+
+    def contains_word(self, text, word):
+        words = text.split()
+        return word in words
+
+    def make_upper(self, text):
+        return text.upper()
+</file>
+
+<file path="app/issue.py">
+import os
+import logging
+import requests
+
+
+def create_github_issue(title: str, body: str, logger: logging.Logger) -> None:
+    repo = os.getenv("GH_REPO")
+    token = os.getenv("GH_TOKEN")
+
+    if not repo or not token:
+        logger.warning("GH_REPO/GH_TOKEN not set; skipping GitHub issue creation.")
+        return
+
+    url = f"https://api.github.com/repos/{repo}/issues"
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+    }
+
+    payload = {
+        "title": title,
+        "body": body,
+    }
+
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=10)
+
+        if r.status_code >= 300:
+            logger.warning(f"Failed to create issue: {r.status_code} {r.text[:200]}")
+        else:
+            logger.info("GitHub issue created successfully.")
+
+    except Exception as e:
+        logger.warning(f"GitHub issue creation failed: {type(e).__name__}: {e}")
+</file>
+
+<file path="app/model_loader.py">
+import joblib
+import mlflow
+import mlflow.sklearn
+
+from mlflow.tracking import MlflowClient
+
+from app.config import LOCAL_MODEL_PATH, MLFLOW_TRACKING_URI, MODEL_URI
+
+
+_model = None
+_model_info = None
+
+
+def load_model():
+    global _model
+
+    if _model is not None:
+        return _model
+
+    if MODEL_URI and MLFLOW_TRACKING_URI:
+        mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+        _model = mlflow.sklearn.load_model(MODEL_URI)
+    else:
+        _model = joblib.load(LOCAL_MODEL_PATH)
+
+    return _model
+
+
+def get_model_info():
+    global _model_info
+
+    if _model_info is not None:
+        return _model_info
+
+    if not MODEL_URI or not MLFLOW_TRACKING_URI:
+        _model_info = {
+            "run_id": "local",
+            "model_type": "local",
+            "test_accuracy": None
+        }
+        return _model_info
+
+    try:
+        mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+        info = mlflow.models.get_model_info(MODEL_URI)
+        run = MlflowClient().get_run(info.run_id)
+
+        _model_info = {
+            "run_id": info.run_id,
+            "model_type": run.data.params.get("model_type"),
+            "test_accuracy": run.data.metrics.get("test_accuracy")
+        }
+
+    except Exception:
+        _model_info = {
+            "run_id": "unknown",
+            "model_type": None,
+            "test_accuracy": None
+        }
+
+    return _model_info
+</file>
+
+<file path="Dockerfile">
+FROM python:3.13-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV PORT=10000
+EXPOSE 10000
+
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+</file>
+
+<file path="ml/data/spam.csv">
+text,label
+hello friend,ham
+how are you,ham
+meeting at 3pm,ham
+project meeting tomorrow,ham
+please review the document,ham
+win a free iphone now,spam
+urgent: claim your prize,spam
+click this link to get money,spam
+</file>
+
+<file path="static/index.html">
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>적당한 스팸 체크기 (AI Spam Checker)</title>
+</head>
+<body>
+  <h1>스팸 판별기</h1>
+
+  <textarea id="text" rows="6" cols="80">Hello!</textarea>
+  <br>
+  <button onclick="classify()">스팸 탐지</button>
+
+  <h2 id="result"></h2>
+
+  <script>
+    function classify() {
+      const text = document.getElementById("text").value;
+
+      fetch("/classify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ text: text })
+      })
+      .then(res => res.json())
+      .then(data => {
+        let msg = "결과: " + data.label + " (score=" + data.score + ")";
+
+        if (data.model_info) {
+          msg += "\\n모델: " + data.model_info.model_type;
+          msg += "\\nTest Acc: " + data.model_info.test_accuracy;
+          msg += "\\nRun ID: " + data.model_info.run_id;
+        }
+
+        document.getElementById("result").innerText = msg;
+      })
+      .catch(err => {
+        document.getElementById("result").innerText = "에러 발생: " + err;
+      });
+    }
+  </script>
+</body>
+</html>
+</file>
+
+<file path="tests/conftest.py">
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+</file>
+
+<file path="tests/test_model.py">
+# tests/test_model.py
+import os
+import joblib
+
+
+def test_trained_model_exists():
+    assert os.path.exists("ml/artifacts/spam_model.joblib")
+
+
+def test_model_can_predict():
+    model = joblib.load("ml/artifacts/spam_model.joblib")
+
+    pred1 = model.predict(["free prize click now"])[0]
+    pred2 = model.predict(["hello friend"])[0]
+
+    assert pred1 in ["spam", "ham"]
+    assert pred2 in ["spam", "ham"]
+</file>
+
+<file path=".github/workflows/pr_push_tester.yml">
+name: Python CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          pytest
+</file>
+
+<file path=".gitignore">
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.DS_Store
+.idea/
+.vscode/
+.hypothesis/
+.pytest_cache/
+mlflow.db
+mlruns/
+</file>
+
+<file path="app/config.py">
+import os
+
+
+MODEL_MODE = os.getenv("MODEL_MODE", "rules")
+
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "")
+MODEL_URI = os.getenv("MODEL_URI", "models:/spam-model@champion")
+
+LOCAL_MODEL_PATH = os.path.join("ml", "artifacts", "spam_model.joblib")
+</file>
+
+<file path="ml/train.py">
+import os
+import joblib
+import pandas as pd
+import mlflow
+import mlflow.sklearn
+
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+
+
+BASE_DIR = os.path.dirname(__file__)
+DATA_DIR = os.path.join(BASE_DIR, "data")
+ARTIFACT_DIR = os.path.join(BASE_DIR, "artifacts")
+MODEL_PATH = os.path.join(ARTIFACT_DIR, "spam_model.joblib")
+
+DATA_PATH = os.path.join(DATA_DIR, "spam.csv")
+
+os.makedirs(ARTIFACT_DIR, exist_ok=True)
+
+
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+
+mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+mlflow.set_registry_uri(MLFLOW_TRACKING_URI)
+mlflow.set_experiment("spam-classification-server")
+
+
+def load_data():
+    df = pd.read_csv(DATA_PATH)
+
+    if "text" not in df.columns or "label" not in df.columns:
+        raise ValueError("CSV file must contain 'text' and 'label' columns.")
+
+    return df
+
+
+def train():
+    df = load_data()
+
+    X = df["text"]
+    y = df["label"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.33,
+        random_state=42,
+        stratify=y
+    )
+
+    models = {
+        "LogisticRegression": LogisticRegression(max_iter=200),
+        "NaiveBayes": MultinomialNB(),
+        "DecisionTree": DecisionTreeClassifier(random_state=42)
+    }
+
+    for model_name, model in models.items():
+        with mlflow.start_run(run_name=model_name):
+            pipeline = Pipeline([
+                ("vectorizer", CountVectorizer()),
+                ("classifier", model)
+            ])
+
+            pipeline.fit(X_train, y_train)
+
+            train_preds = pipeline.predict(X_train)
+            test_preds = pipeline.predict(X_test)
+
+            train_acc = accuracy_score(y_train, train_preds)
+            test_acc = accuracy_score(y_test, test_preds)
+
+            mlflow.log_param("model_type", model_name)
+            mlflow.log_param("vectorizer", "CountVectorizer")
+            mlflow.log_param("train_data_path", DATA_PATH)
+            mlflow.log_param("train_row_count", len(X_train))
+            mlflow.log_param("test_row_count", len(X_test))
+
+            mlflow.log_metric("train_accuracy", train_acc)
+            mlflow.log_metric("test_accuracy", test_acc)
+
+            joblib.dump(pipeline, MODEL_PATH)
+
+            mlflow.log_artifact(DATA_PATH)
+            mlflow.log_artifact(MODEL_PATH)
+
+            mlflow.sklearn.log_model(
+                sk_model=pipeline,
+                artifact_path="model",
+                registered_model_name="spam-model"
+            )
+
+            print(f"model: {model_name}")
+            print(f"Model saved to: {MODEL_PATH}")
+            print(f"train_accuracy: {train_acc:.4f}")
+            print(f"test_accuracy: {test_acc:.4f}")
+
+
+if __name__ == "__main__":
+    train()
+</file>
+
+<file path="tests/test_api.py">
+from fastapi.testclient import TestClient
+from app.main import app
+
+client = TestClient(app)
+
+
+def test_classify_api_contract():
+    r = client.post("/classify", json={"text": "hello"})
+    assert r.status_code == 200
+
+    data = r.json()
+    assert "label" in data
+    assert "score" in data
+    assert data["label"] in ["spam", "ham"]
+
+
+def test_classify_api_spam_request():
+    r = client.post("/classify", json={"text": "free prize click"})
+    assert r.status_code == 200
+
+    data = r.json()
+    assert "label" in data
+    assert "score" in data
+</file>
+
+<file path="tests/test_spam.py">
+from app.spam import check_spam_rules, check_spam_ml
+
+
+def test_check_spam_rules_basic():
+    assert check_spam_rules("hello")[0] == "ham"
+    assert check_spam_rules("free prize click")[0] == "spam"
+
+
+def test_check_spam_rules_empty():
+    assert check_spam_rules("") == ("ham", 0)
+
+
+def test_check_spam_ml_can_predict():
+    label, score = check_spam_ml("free prize click now")
+    assert label in ["spam", "ham"]
+    assert isinstance(score, float)
+</file>
+
+<file path="app/main.py">
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from app.spam import classify_text
+from app.model_loader import get_model_info
+
+
+app = FastAPI(title="AI Spam Checker")
+
+
+class SpamRequest(BaseModel):
+    text: str
+
+
+@app.post("/classify")
+def classify(request: SpamRequest):
+    label, score = classify_text(request.text)
+
+    return {
+        "label": label,
+        "score": score,
+        "model_info": get_model_info()
+    }
+
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
+</file>
+
+<file path="app/spam.py">
+from app.config import MODEL_MODE
+from app.model_loader import load_model
+
+
+SPAM_WORDS = [
+    "free",
+    "prize",
+    "winner",
+    "win",
+    "cash",
+    "urgent",
+    "click",
+    "offer",
+    "claim",
+    "money",
+    "reward",
+    "verify",
+    "payment",
+    "account"
+]
+
+
+def classify_text(text: str):
+    clean_text = text.strip()
+
+    if not clean_text:
+        return "ham", 0.0
+
+    if MODEL_MODE == "mlflow":
+        model = load_model()
+
+        label = model.predict([clean_text])[0]
+
+        score = 0.0
+        if hasattr(model, "predict_proba"):
+            probabilities = model.predict_proba([clean_text])[0]
+            classes = list(model.classes_)
+
+            if label in classes:
+                score = float(probabilities[classes.index(label)])
+
+        return label, score
+
+    lowered = clean_text.lower()
+    hit_count = sum(1 for word in SPAM_WORDS if word in lowered)
+
+    if hit_count > 0:
+        score = min(0.5 + hit_count * 0.1, 0.99)
+        return "spam", score
+
+    return "ham", 0.5
+</file>
+
+<file path="requirements.txt">
+fastapi==0.128.0
+uvicorn[standard]==0.40.0
+python-multipart==0.0.21
+pydantic==2.12.5
+pytest==9.0.2
+httpx==0.28.1
+hypothesis
+requests==2.32.5
+pandas
+scikit-learn==1.8.0
+joblib
+mlflow
+</file>
+
+</files>
