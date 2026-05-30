@@ -12,16 +12,17 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
+from mlflow.tracking import MlflowClient
+from app.model_promoter import promote_if_better
+
 
 BASE_DIR = os.path.dirname(__file__)
 DATA_DIR = os.path.join(BASE_DIR, "data")
 ARTIFACT_DIR = os.path.join(BASE_DIR, "artifacts")
 MODEL_PATH = os.path.join(ARTIFACT_DIR, "spam_model.joblib")
-
 DATA_PATH = os.path.join(DATA_DIR, "spam.csv")
 
 os.makedirs(ARTIFACT_DIR, exist_ok=True)
-
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
 
@@ -59,6 +60,10 @@ def train():
         "DecisionTree": DecisionTreeClassifier(random_state=42)
     }
 
+    client = MlflowClient()
+    best_test_acc = -1.0
+    best_version = None
+
     for model_name, model in models.items():
         with mlflow.start_run(run_name=model_name):
             pipeline = Pipeline([
@@ -88,7 +93,7 @@ def train():
             mlflow.log_artifact(DATA_PATH)
             mlflow.log_artifact(MODEL_PATH)
 
-            mlflow.sklearn.log_model(
+            model_info = mlflow.sklearn.log_model(
                 sk_model=pipeline,
                 artifact_path="model",
                 registered_model_name="spam-model"
@@ -98,6 +103,16 @@ def train():
             print(f"Model saved to: {MODEL_PATH}")
             print(f"train_accuracy: {train_acc:.4f}")
             print(f"test_accuracy: {test_acc:.4f}")
+
+            latest_versions = client.search_model_versions("name='spam-model'")
+            latest_version = max(latest_versions, key=lambda v: int(v.version))
+
+            if test_acc > best_test_acc:
+                best_test_acc = test_acc
+                best_version = latest_version.version
+
+    if best_version is not None:
+        promote_if_better(best_version, best_test_acc)
 
 
 if __name__ == "__main__":
